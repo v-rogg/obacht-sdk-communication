@@ -11,3 +11,5 @@ type Sensor struct {
 }
 
 var sensors = make(map[SensorAddress]Sensor)
+
+var radian float32 = 0.0

@@ -6,11 +6,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
+	"google.golang.org/grpc"
 	"log"
+	"strconv"
+	"strings"
+	"xx_backend/pb"
 )
 
 var mqttClient mqtt.Client
 var cubePosition [2]int64
+var trackingClient pb.RawDataClient
 
 func init() {
 	cubePosition[0] = 0
@@ -18,6 +23,18 @@ func init() {
 }
 
 func main() {
+
+	//------------
+	// gRPC
+	//------------
+
+	conn, err := grpc.Dial("localhost:3010", grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	trackingClient = pb.NewRawDataClient(conn)
 
 	go runWebsocketHub()
 
@@ -46,7 +63,19 @@ func main() {
 				return // Calls the deferred function, i.e. closes the connection on error
 			}
 			if messageType == websocket.TextMessage {
-				fmt.Println(string(messagePayload))
+
+				message := string(messagePayload)
+				fmt.Println(message)
+
+				splitMessage := strings.Split(message, ";")
+
+				if splitMessage[0] == "system" {
+					if splitMessage[1] == "rotate" {
+						f, _ := strconv.ParseFloat(splitMessage[3], 32)
+						radian = -float32(f)
+					}
+				}
+
 				wsBroadcast <- string(messagePayload)
 				// Do something with the message
 			} else {
@@ -61,8 +90,8 @@ func main() {
 	})
 
 	mqttClient = mqttConnect()
-	go mqttListen(mqttClient, "$connected", connectionHandler)
-	go mqttListen(mqttClient, "test", broadcastHandler)
+	go mqttListen(mqttClient, "connection", connectionHandler)
+	//go mqttListen(mqttClient, "test", broadcastHandler)
 
 	//go mqttListen(mqttClient, "pingcheck", pingHandler)
 	//token := mqttClient.Publish("pingtest", 1, false, ".")
