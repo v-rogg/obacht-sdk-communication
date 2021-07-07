@@ -4,7 +4,6 @@ import (
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/websocket/v2"
 	"google.golang.org/grpc"
 	"log"
@@ -88,11 +87,6 @@ func main() {
 			}
 		}
 	}))
-
-	app.Use(cors.New())
-	app.Get("/init", func(c *fiber.Ctx) error {
-		return c.JSON(sensors)
-	})
 
 	mqttClient = mqttConnect()
 	go mqttListen(mqttClient, "connection", connectionHandler)

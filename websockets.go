@@ -17,6 +17,10 @@ func runWebsocketHub() {
 		select {
 		case connection := <-wsRegister:
 			wsClients[connection] = wsClient{}
+			message := sendSensorsMessage()
+			if err := connection.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+				log.Println("write error initial message:", err)
+			}
 			log.Println("connection registered")
 		case message := <-wsBroadcast:
 			for connection := range wsClients {

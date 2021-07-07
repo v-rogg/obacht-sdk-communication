@@ -68,9 +68,6 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 			x := float32(math.Sin(angle*math.Pi/180) * distance)
 			y := float32(math.Cos(angle*math.Pi/180) * distance)
 
-			//x += sensors[SensorAddress(msg.Topic())].Position.X
-			//y += sensors[SensorAddress(msg.Topic())].Position.Y
-
 			coordinates = append(coordinates, &pb.Coordinate{X: x, Y: y})
 		}
 
@@ -94,27 +91,19 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 	}
 }
 
-func pingHandler(_ mqtt.Client, msg mqtt.Message) {
-	wsBroadcast <- string(msg.Payload())
-
-	log.Println("end  ", time.Now().UnixNano())
-	log.Println(string(msg.Payload()))
-}
-
 func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 
 	messageString := string(msg.Payload())
 
 	messageParts := strings.Split(messageString, ";")
 
-	var sensor Sensor
-
 	if messageParts[1] == "+" {
 		if len(messageParts) == 4 {
 			sensorAddress := SensorAddress(messageParts[0])
-			sensor = Sensor{
+			sensor := Sensor{
 				Hostname: SensorHostname(messageParts[2]),
 				Model:    SensorModel(messageParts[3]),
+				Color:    SensorColor(sensorColors[(len(sensors) % len(sensorColors))]),
 				Position: &SensorPosition{
 					X:      0,
 					Y:      0,
@@ -128,7 +117,8 @@ func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 			go mqttListen(mqttClient, string(sensorAddress), broadcastHandler)
 		}
 	} else if messageParts[1] == "-" {
-		sensorAddress := SensorAddress(messageParts[2])
+		log.Println("delete", messageString)
+		sensorAddress := SensorAddress(messageParts[0])
 		_, ok := sensors[sensorAddress]
 		if ok {
 			delete(sensors, sensorAddress)
@@ -137,6 +127,5 @@ func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 
 	log.Println(sensors)
 
-	wsBroadcast <- messageString
-	log.Println(messageString)
+	wsBroadcast <- sendSensorsMessage()
 }
