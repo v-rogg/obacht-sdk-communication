@@ -65,15 +65,18 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 			angle, _ := strconv.ParseFloat(values[0], 64)
 			distance, _ := strconv.ParseFloat(values[1], 64)
 
-			x := math.Sin(angle*math.Pi/180) * distance
-			y := math.Cos(angle*math.Pi/180) * distance
+			x := float32(math.Sin(angle*math.Pi/180) * distance)
+			y := float32(math.Cos(angle*math.Pi/180) * distance)
 
-			coordinates = append(coordinates, &pb.Coordinate{X: float32(x), Y: float32(y)})
+			//x += sensors[SensorAddress(msg.Topic())].Position.X
+			//y += sensors[SensorAddress(msg.Topic())].Position.Y
+
+			coordinates = append(coordinates, &pb.Coordinate{X: x, Y: y})
 		}
 
 		resp1, err := trackingClient.Transform(context.Background(), &pb.TransformRequest{
 			RawCoordinates: coordinates,
-			Radian:         float32(radian),
+			Radian:         sensors[SensorAddress(msg.Topic())].Position.Radian,
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -82,19 +85,13 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 		transformedCoordinates := resp1.GetTransformedCoordinates()
 
 		for _, coordinate := range transformedCoordinates {
-			wsMessage += strconv.FormatFloat(float64(coordinate.X), 'f', 5, 32) + ":" + strconv.FormatFloat(float64(coordinate.Y), 'f', 5, 64) + "!"
+			wsMessage += strconv.FormatFloat(float64(coordinate.X+sensors[SensorAddress(msg.Topic())].Position.X), 'f', 5, 32) + ":" + strconv.FormatFloat(float64(coordinate.Y+sensors[SensorAddress(msg.Topic())].Position.Y), 'f', 5, 64) + "!"
 		}
 
 		wsBroadcast <- wsMessage
 	} else {
 		wsBroadcast <- msg.Topic() + ";" + string(msg.Payload())
 	}
-
-	//req := pb.TransformRequest{
-	//	RawCoordinate: nil,
-	//	Radian:        0,
-	//}
-
 }
 
 func pingHandler(_ mqtt.Client, msg mqtt.Message) {
@@ -118,6 +115,11 @@ func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 			sensor = Sensor{
 				Hostname: SensorHostname(messageParts[2]),
 				Model:    SensorModel(messageParts[3]),
+				Position: &SensorPosition{
+					X:      0,
+					Y:      0,
+					Radian: 0,
+				},
 			}
 
 			sensors[sensorAddress] = sensor

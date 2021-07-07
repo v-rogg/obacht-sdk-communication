@@ -72,7 +72,12 @@ func main() {
 				if splitMessage[0] == "system" {
 					if splitMessage[1] == "rotate" {
 						f, _ := strconv.ParseFloat(splitMessage[3], 32)
-						radian = -float32(f)
+						sensors["192.168.178.112"].Position.Radian = -float32(f)
+					} else if splitMessage[1] == "move" {
+						x, _ := strconv.ParseFloat(splitMessage[3], 32)
+						y, _ := strconv.ParseFloat(splitMessage[4], 32)
+						sensors["192.168.178.112"].Position.X = float32(x * 1000)
+						sensors["192.168.178.112"].Position.Y = float32(y * 1000)
 					}
 				}
 
