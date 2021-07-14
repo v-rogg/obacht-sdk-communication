@@ -71,7 +71,7 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 			coordinates = append(coordinates, &pb.Coordinate{X: x, Y: y})
 		}
 
-		resp1, err := trackingClient.Transform(context.Background(), &pb.TransformRequest{
+		resp, err := trackingClient.Transform(context.Background(), &pb.TransformRequest{
 			RawCoordinates: coordinates,
 			Radian:         sensors[SensorAddress(msg.Topic())].Position.Radian,
 		})
@@ -79,11 +79,25 @@ func broadcastHandler(_ mqtt.Client, msg mqtt.Message) {
 			log.Fatal(err)
 		}
 
-		transformedCoordinates := resp1.GetTransformedCoordinates()
+		rotatedCoordinates := resp.GetTransformedCoordinates()
 
-		for _, coordinate := range transformedCoordinates {
-			wsMessage += strconv.FormatFloat(float64(coordinate.X+sensors[SensorAddress(msg.Topic())].Position.X), 'f', 5, 32) + ":" + strconv.FormatFloat(float64(coordinate.Y+sensors[SensorAddress(msg.Topic())].Position.Y), 'f', 5, 64) + "!"
+		scan := Scan{}
+
+		for _, coordinate := range rotatedCoordinates {
+
+			sensorPostionUpdatedX := coordinate.X + sensors[SensorAddress(msg.Topic())].Position.X
+			sensorPostionUpdatedY := coordinate.Y + sensors[SensorAddress(msg.Topic())].Position.Y
+
+			c := Coordinate{
+				X: sensorPostionUpdatedX,
+				Y: sensorPostionUpdatedY,
+			}
+			scan = append(scan, c)
+
+			wsMessage += strconv.FormatFloat(float64(sensorPostionUpdatedX), 'f', 5, 32) + ":" + strconv.FormatFloat(float64(sensorPostionUpdatedY), 'f', 5, 64) + "!"
 		}
+
+		sensorLastScan[SensorAddress(msg.Topic())] = scan
 
 		wsBroadcast <- wsMessage
 	} else {
@@ -100,32 +114,46 @@ func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 	if messageParts[1] == "+" {
 		if len(messageParts) == 4 {
 			sensorAddress := SensorAddress(messageParts[0])
-			sensor := Sensor{
-				Hostname: SensorHostname(messageParts[2]),
-				Model:    SensorModel(messageParts[3]),
-				Color:    SensorColor(sensorColors[(len(sensors) % len(sensorColors))]),
-				Position: &SensorPosition{
-					X:      0,
-					Y:      0,
-					Radian: 0,
-				},
-			}
+			log.Println("connected", messageString)
 
-			sensors[sensorAddress] = sensor
+			_, ok := sensors[sensorAddress]
+			if ok {
+				sensor := sensors[sensorAddress]
+				sensor.Connected = true
+				sensors[sensorAddress] = sensor
+			} else {
+				sensor := Sensor{
+					Hostname: SensorHostname(messageParts[2]),
+					Model:    SensorModel(messageParts[3]),
+					Color:    SensorColor(sensorColors[sensorColorIndex%len(sensorColors)]),
+					Position: &SensorPosition{
+						X:      0,
+						Y:      0,
+						Radian: 0,
+					},
+					Connected: true,
+				}
+				sensors[sensorAddress] = sensor
+				sensorColorIndex++
+			}
 
 			log.Println(string(sensorAddress))
 			go mqttListen(mqttClient, string(sensorAddress), broadcastHandler)
 		}
 	} else if messageParts[1] == "-" {
-		log.Println("delete", messageString)
+		log.Println("disconnected", messageString)
 		sensorAddress := SensorAddress(messageParts[0])
 		_, ok := sensors[sensorAddress]
 		if ok {
-			delete(sensors, sensorAddress)
+			sensor := sensors[sensorAddress]
+			sensor.Connected = false
+			sensors[sensorAddress] = sensor
+			//delete(sensors, sensorAddress)
 		}
+		sensorLastScan[sensorAddress] = Scan{}
 	}
 
 	log.Println(sensors)
 
-	wsBroadcast <- sendSensorsMessage()
+	wsBroadcast <- generateSensorsMessage()
 }

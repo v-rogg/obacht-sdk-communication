@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RawDataClient interface {
 	Transform(ctx context.Context, in *TransformRequest, opts ...grpc.CallOption) (*TransformResponse, error)
+	TrackPersons(ctx context.Context, in *TrackRequest, opts ...grpc.CallOption) (*TrackResponse, error)
 }
 
 type rawDataClient struct {
@@ -38,11 +39,21 @@ func (c *rawDataClient) Transform(ctx context.Context, in *TransformRequest, opt
 	return out, nil
 }
 
+func (c *rawDataClient) TrackPersons(ctx context.Context, in *TrackRequest, opts ...grpc.CallOption) (*TrackResponse, error) {
+	out := new(TrackResponse)
+	err := c.cc.Invoke(ctx, "/pb.RawData/TrackPersons", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RawDataServer is the server API for RawData service.
 // All implementations must embed UnimplementedRawDataServer
 // for forward compatibility
 type RawDataServer interface {
 	Transform(context.Context, *TransformRequest) (*TransformResponse, error)
+	TrackPersons(context.Context, *TrackRequest) (*TrackResponse, error)
 	mustEmbedUnimplementedRawDataServer()
 }
 
@@ -52,6 +63,9 @@ type UnimplementedRawDataServer struct {
 
 func (UnimplementedRawDataServer) Transform(context.Context, *TransformRequest) (*TransformResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Transform not implemented")
+}
+func (UnimplementedRawDataServer) TrackPersons(context.Context, *TrackRequest) (*TrackResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TrackPersons not implemented")
 }
 func (UnimplementedRawDataServer) mustEmbedUnimplementedRawDataServer() {}
 
@@ -84,6 +98,24 @@ func _RawData_Transform_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RawData_TrackPersons_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TrackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RawDataServer).TrackPersons(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.RawData/TrackPersons",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RawDataServer).TrackPersons(ctx, req.(*TrackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RawData_ServiceDesc is the grpc.ServiceDesc for RawData service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -94,6 +126,10 @@ var RawData_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Transform",
 			Handler:    _RawData_Transform_Handler,
+		},
+		{
+			MethodName: "TrackPersons",
+			Handler:    _RawData_TrackPersons_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
