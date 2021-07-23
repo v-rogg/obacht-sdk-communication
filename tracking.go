@@ -8,6 +8,9 @@ import (
 	"xx_backend/pb"
 )
 
+var dbscanEps float32 = 250
+var dbscanMinSamples int64 = 15
+
 func runTracking() {
 	//for {
 	var zones []*pb.Zone
@@ -51,8 +54,10 @@ func runTracking() {
 	}
 
 	resp, err := trackingClient.TrackPersons(context.Background(), &pb.TrackRequest{
-		Zones: zones,
-		Scans: scans,
+		Zones:      zones,
+		Scans:      scans,
+		Eps:        dbscanEps,
+		MinSamples: dbscanMinSamples,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -62,11 +67,10 @@ func runTracking() {
 
 	message := "system;persons;"
 	for _, person := range persons {
-		log.Println(person.X, person.Y)
+		//log.Println(person.X, person.Y)
 		message += strconv.FormatFloat(float64(person.GetX())/threeScale, 'f', 5, 64) + ":" + strconv.FormatFloat(float64(person.GetY())/threeScale, 'f', 5, 64) + "!"
 	}
 	wsBroadcast <- message
-	time.AfterFunc(100*time.Millisecond, runTracking)
-	//time.AfterFunc(3*time.Second, runTracking)
-	//}
+
+	time.AfterFunc(60*time.Millisecond, runTracking)
 }

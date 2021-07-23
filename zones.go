@@ -19,17 +19,21 @@ func generateZonesMessage() string {
 	message := "system;zones;"
 
 	for sensorAddress, sensorZone := range sensorZones {
-		message += string(sensorAddress) + ","
+		A
+		if sensors[sensorAddress].Connected {
+			message += string(sensorAddress) + ","
 
-		for _, position := range sensorZone {
+			for _, position := range sensorZone {
 
-			x := strconv.FormatFloat(float64(position.X)/threeScale, 'f', 5, 64)
-			y := strconv.FormatFloat(float64(position.Y)/threeScale, 'f', 5, 64)
+				x := strconv.FormatFloat(float64(position.X)/threeScale, 'f', 5, 64)
+				y := strconv.FormatFloat(float64(position.Y)/threeScale, 'f', 5, 64)
 
-			message += x + ":" + y + "?"
+				message += x + ":" + y + "?"
+			}
+
+			message += "!"
 		}
 
-		message += "!"
 	}
 
 	log.Println(message)
@@ -59,12 +63,8 @@ func analyseZonesMessage(message string) {
 				X: float32(x * threeScale),
 				Y: float32(y * threeScale),
 			}
-			log.Println(position)
-
 			zone = append(zone, position)
 		}
 		sensorZones[sensorAddress] = zone
 	}
-
-	log.Println(sensorLastScan)
 }

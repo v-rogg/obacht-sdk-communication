@@ -13,7 +13,7 @@ import (
 )
 
 func mqttConnect() mqtt.Client {
-	var broker = "192.168.178.48"
+	var broker = "localhost"
 	var port = 1883
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", broker, port))
@@ -154,6 +154,6 @@ func connectionHandler(_ mqtt.Client, msg mqtt.Message) {
 	}
 
 	log.Println(sensors)
-
 	wsBroadcast <- generateSensorsMessage()
+	wsBroadcast <- generateZonesMessage()
 }

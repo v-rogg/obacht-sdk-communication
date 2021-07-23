@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/websocket/v2"
 	"google.golang.org/grpc"
 	"log"
+	"os"
 	"xx_backend/pb"
 )
 
@@ -13,6 +14,10 @@ var mqttClient mqtt.Client
 var trackingClient pb.RawDataClient
 var originPosition [2]float32
 var threeScale float64 = 1000
+var recording = false
+var mqttOutput = true
+var logOutput = false
+var logfile *os.File
 
 func main() {
 
