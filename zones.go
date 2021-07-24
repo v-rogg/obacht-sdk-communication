@@ -19,7 +19,7 @@ func generateZonesMessage() string {
 	message := "system;zones;"
 
 	for sensorAddress, sensorZone := range sensorZones {
-		A
+
 		if sensors[sensorAddress].Connected {
 			message += string(sensorAddress) + ","
 
